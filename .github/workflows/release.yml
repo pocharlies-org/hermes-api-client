@@ -1,0 +1,41 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  wheel:
+    runs-on: arc-k8s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Construir el wheel
+        run: |
+          python -m pip install --quiet build
+          python -m build --wheel --outdir dist
+          ls -l dist
+      # El runner de ARC no trae `gh`: la release se crea y el wheel se sube con curl.
+      - name: Publicar la release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          wheel=$(ls dist/*.whl)
+          api="https://api.github.com/repos/$GITHUB_REPOSITORY/releases"
+          id=$(curl -sS -f -X POST "$api" -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                -d "{\"tag_name\":\"$TAG\",\"name\":\"$TAG\"}" | sed -n 's/.*"id": *\([0-9]*\).*/\1/p' | head -1)
+          [ -n "$id" ] || { echo "no se pudo crear la release"; exit 1; }
+          curl -sS -f -X POST \
+            "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$id/assets?name=$(basename "$wheel")" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Content-Type: application/zip" \
+            --data-binary "@$wheel" > /dev/null
+          echo "wheel publicado: $(basename "$wheel")"
