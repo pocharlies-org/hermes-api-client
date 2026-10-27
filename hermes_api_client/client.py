@@ -97,7 +97,10 @@ class HermesApi:
 
         headers = {"Accept": "text/event-stream", **self._headers(), **(extra_headers or {})}
         try:
-            request = self._http.build_request(method, self._url(path), headers=headers, json=body)
+            # El timeout va en la petición (httpx lo lee de ahí, `send` no lo acepta): sin él
+            # el stream heredaría el defecto del cliente, que es el corto de las llamadas JSON.
+            request = self._http.build_request(method, self._url(path), headers=headers, json=body,
+                                               timeout=self._stream_timeout)
             resp = await self._http.send(request, stream=True)
         except httpx.TransportError as exc:
             raise HermesError(f"hermes stream failed: {exc!r}", status=0) from exc

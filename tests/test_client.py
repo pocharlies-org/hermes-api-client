@@ -271,3 +271,24 @@ async def test_update_session_and_answer_clarify() -> None:
     await api.answer_clarify("s-1", "c-9", "sí")
     assert seen[-1].url.path == "/api/sessions/s-1/clarify/c-9"
     assert json.loads(seen[-1].content) == {"response": "sí"}
+
+
+# ── timeouts ──
+async def test_stream_uses_its_own_timeout_and_json_keeps_the_default() -> None:
+    """El stream de un turno (120 s de silencio) no puede heredar el corto de las llamadas JSON."""
+
+    visto: list[tuple[str, dict]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        visto.append((request.url.path, dict(request.extensions["timeout"])))
+        if request.url.path.endswith("/events"):
+            return httpx.Response(200, stream=_Bytes(b'data: {"event": "run.completed"}\n\n'))
+        return httpx.Response(200, json={"session": {"id": "s-1"}})
+
+    api, _ = make(handler, timeout=5.0, stream_timeout=httpx.Timeout(120.0, connect=5.0))
+    assert [f async for f in api.run_events("run_1")] == [{"event": "run.completed"}]
+    await api.get_session("s-1")
+    assert visto == [
+        ("/v1/runs/run_1/events", {"connect": 5.0, "read": 120.0, "write": 120.0, "pool": 120.0}),
+        ("/api/sessions/s-1", {"connect": 5.0, "read": 5.0, "write": 5.0, "pool": 5.0}),
+    ]
