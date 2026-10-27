@@ -292,3 +292,14 @@ async def test_stream_uses_its_own_timeout_and_json_keeps_the_default() -> None:
         ("/v1/runs/run_1/events", {"connect": 5.0, "read": 120.0, "write": 120.0, "pool": 120.0}),
         ("/api/sessions/s-1", {"connect": 5.0, "read": 5.0, "write": 5.0, "pool": 5.0}),
     ]
+
+
+async def test_list_sessions_page_carries_has_more_and_archived() -> None:
+    """El paginador del dashboard DGX necesita el `has_more` del sobre y la vía de archivadas."""
+
+    api, seen = make(lambda r: httpx.Response(200, json={"data": [{"id": "s-1"}], "has_more": True}))
+    filas, mas = await api.list_sessions_page(limit=200, offset=400, archived="only")
+    assert (filas, mas) == ([{"id": "s-1"}], True)
+    assert seen[0].url.params["archived"] == "only" and seen[0].url.params["offset"] == "400"
+    api2, _ = make(lambda r: httpx.Response(200, json={"data": [{"id": "s-2"}]}))
+    assert await api2.list_sessions() == [{"id": "s-2"}]   # sin has_more: False, y solo filas
