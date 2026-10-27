@@ -172,12 +172,29 @@ class HermesApi:
 
     async def list_sessions(self, *, limit: int = 200, offset: int | None = None,
                             source: str | None = None) -> list[dict[str, Any]]:
+        filas, _mas = await self.list_sessions_page(limit=limit, offset=offset, source=source)
+        return filas
+
+    async def list_sessions_page(self, *, limit: int = 200, offset: int | None = None,
+                                 source: str | None = None,
+                                 archived: str | None = None) -> tuple[list[dict[str, Any]], bool]:
+        """Una página de sesiones y si quedan más.
+
+        ``archived="only"`` pide las archivadas (así las lista el fork del api_server); un Hermes sin
+        el parámetro devuelve las vivas otra vez, y eso lo decide el consumidor (el dashboard DGX las
+        descarta por id). ``has_more`` es del sobre: con él se paga hasta la última página sin pedir
+        una de más, que es la razón de ser de este método — ``list_sessions`` devuelve solo las filas.
+        """
+
         params: dict[str, Any] = {"limit": limit}
         if offset is not None:
             params["offset"] = offset
         if source:
             params["source"] = source
-        return _rows(await self._json("GET", "/api/sessions", params=params))
+        if archived:
+            params["archived"] = archived
+        data = await self._json("GET", "/api/sessions", params=params)
+        return _rows(data), bool(isinstance(data, dict) and data.get("has_more"))
 
     async def messages(self, sid: str, *, limit: int = 50, offset: int | None = None,
                        order: str = "latest") -> list[dict[str, Any]]:
