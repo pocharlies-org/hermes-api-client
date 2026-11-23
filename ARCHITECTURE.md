@@ -1,6 +1,7 @@
 # Arquitectura
 
-Una librería, tres módulos, una dependencia (`httpx`). Nace en DGX-1301 (nota del architect,
+Una librería, cuatro módulos (`client`, `sse`, `errors`, `webhooks`), una dependencia (`httpx`).
+Nace en DGX-1301 (nota del architect,
 adjunta en el ticket): cuatro sistemas hablaban con el api_server de Hermes cada uno con su
 cliente, y lo que ya había divergido — la escalera de títulos de sesión, el 409
 `session_busy`, los estados reintentables y el parser SSE — estaba reescrito cuatro veces.
@@ -8,7 +9,10 @@ cliente, y lo que ya había divergido — la escalera de títulos de sesión, el
 ## Qué es y qué no es
 
 Es el único sitio que sabe **cómo se llama al api_server de Hermes desde Python**: las rutas,
-el encuadre SSE, la escalera de títulos y la clasificación de errores.
+el encuadre SSE, la escalera de títulos y la clasificación de errores. Y cómo se firma la otra
+dirección — los webhooks que Hermes entrega en `POST /p/<perfil>/webhooks/<ruta>`: `webhooks.py`
+aporta `sign_v2` (los emisores) y `verify_v2` (quien los recibe), el mismo esquema que el dashboard
+verificaba a mano en `despacho_base.py` antes de existir este módulo.
 
 **No traduce eventos.** De aquí salen las filas crudas de la API y los `SseEvent` tal como los
 manda Hermes. El vocabulario que ve cada usuario (los eventos `meta|text|tool|done` del panel,
