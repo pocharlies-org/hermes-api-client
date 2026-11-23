@@ -6,7 +6,8 @@ import time
 
 import pytest
 
-from hermes_api_client import SIGNATURE_HEADER, SKEW_S, TIMESTAMP_HEADER, firma, sign_v2, verify_v2
+from hermes_api_client import SIGNATURE_HEADER, SKEW_S, TIMESTAMP_HEADER, sign_v2, verify_v2
+from hermes_api_client.webhooks import _firma
 
 SECRETO = b"secreto-del-webhook"
 CUERPO = b'{"key":"SC-1","evento":"abierta"}'
@@ -25,7 +26,7 @@ def test_round_trip_lo_que_se_firma_se_verifica():
 def test_el_secreto_vale_como_str_y_como_bytes():
     # Un env llega como `str`; un Secret montado, como `bytes`. La firma no puede depender de eso.
     ts = _ahora()
-    assert firma("secreto", CUERPO, ts) == firma(b"secreto", CUERPO, ts)
+    assert _firma("secreto", CUERPO, ts) == _firma(b"secreto", CUERPO, ts)
 
 
 def test_la_firma_es_el_esquema_de_hermes_no_el_nuestro():
@@ -33,7 +34,7 @@ def test_la_firma_es_el_esquema_de_hermes_no_el_nuestro():
     # este test se pone rojo aunque `verify_v2` siga siendo consistente consigo mismo.
     ts, cuerpo = 1_700_000_000, b'{"a":1}'
     esperado = hmac.new(b"s", b"1700000000." + cuerpo, hashlib.sha256).hexdigest()
-    assert firma(b"s", cuerpo, ts) == esperado
+    assert _firma(b"s", cuerpo, ts) == esperado
 
 
 def test_firma_forjada_no_vale():

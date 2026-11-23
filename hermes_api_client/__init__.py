@@ -3,7 +3,7 @@
 from .client import HermesApi
 from .errors import RETRYABLE_STATUSES, HermesBusy, HermesConfigError, HermesError
 from .sse import SseEvent, SseParser, aiter_data_frames, aiter_sse, iter_sse
-from .webhooks import SIGNATURE_HEADER, SKEW_S, TIMESTAMP_HEADER, firma, sign_v2, verify_v2
+from .webhooks import SIGNATURE_HEADER, SKEW_S, TIMESTAMP_HEADER, sign_v2, verify_v2
 
 __all__ = [
     "HermesApi",
@@ -18,7 +18,6 @@ __all__ = [
     "TIMESTAMP_HEADER",
     "aiter_data_frames",
     "aiter_sse",
-    "firma",
     "iter_sse",
     "sign_v2",
     "verify_v2",

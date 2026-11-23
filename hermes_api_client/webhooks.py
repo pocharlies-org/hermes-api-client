@@ -35,7 +35,7 @@ def _bytes(secreto: bytes | str) -> bytes:
     return secreto.encode() if isinstance(secreto, str) else secreto
 
 
-def firma(secreto: bytes | str, cuerpo: bytes, ts: int) -> str:
+def _firma(secreto: bytes | str, cuerpo: bytes, ts: int) -> str:
     """El hex de la firma V2 sobre `<ts>.<cuerpo>`. `ts` es explícito para que un test lo fije."""
     return hmac.new(_bytes(secreto), str(ts).encode() + b"." + cuerpo, hashlib.sha256).hexdigest()
 
@@ -49,7 +49,7 @@ def sign_v2(secreto: bytes | str, cuerpo: bytes, ts: int | None = None) -> dict[
     if not secreto:
         raise ValueError("falta el secreto del webhook: sin él no se firma")
     instante = int(ts) if ts is not None else int(time.time())
-    return {TIMESTAMP_HEADER: str(instante), SIGNATURE_HEADER: firma(secreto, cuerpo, instante)}
+    return {TIMESTAMP_HEADER: str(instante), SIGNATURE_HEADER: _firma(secreto, cuerpo, instante)}
 
 
 def verify_v2(
@@ -77,4 +77,4 @@ def verify_v2(
         return False
     if abs((time.time() if now is None else now) - instante) > skew:
         return False
-    return hmac.compare_digest(firma(secreto, cuerpo, instante), firma_recibida)
+    return hmac.compare_digest(_firma(secreto, cuerpo, instante), firma_recibida)
